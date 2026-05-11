@@ -11,7 +11,6 @@ export function AuthProvider({ children }) {
     return localStorage.getItem('rsm_dark_mode') === 'true';
   });
 
-  // Apply dark class to <html> for Tailwind dark: variants
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -44,11 +43,21 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }
 
+  // Re-fetch admin row (used when status might have changed, like after approval)
+  const refreshAdmin = async () => {
+    if (!session) return;
+    await loadAdmin(session.user.id);
+  };
+
   const signIn = (email, password) =>
     supabase.auth.signInWithPassword({ email, password });
 
-  const signUp = (email, password, fullName) =>
-    supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+  const signUp = (email, password, fullName, signupReason) =>
+    supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName, signup_reason: signupReason } },
+    });
 
   const signOut = () => supabase.auth.signOut();
 
@@ -57,7 +66,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       session, admin, loading,
-      signIn, signUp, signOut,
+      signIn, signUp, signOut, refreshAdmin,
       darkMode, toggleDarkMode,
     }}>
       {children}

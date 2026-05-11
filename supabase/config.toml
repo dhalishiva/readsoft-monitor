@@ -472,3 +472,47 @@ entrypoint = "./functions/check-stale-mail/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/check-stale-mail/*.html" ]
+
+[functions.create-admin]
+enabled = true
+verify_jwt = true
+import_map = "./functions/create-admin/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/create-admin/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/create-admin/*.html" ]
+
+[functions.request-password-reset]
+enabled = true
+verify_jwt = true
+import_map = "./functions/request-password-reset/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/request-password-reset/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/request-password-reset/*.html" ]
+
+[functions.verify-password-reset]
+enabled = true
+verify_jwt = true
+import_map = "./functions/verify-password-reset/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/verify-password-reset/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/verify-password-reset/*.html" ]
+
+[functions.reset-other-password]
+enabled = true
+verify_jwt = true
+import_map = "./functions/reset-other-password/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/reset-other-password/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/reset-other-password/*.html" ]
