@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
-import { createAdmin } from '../lib/edgeFunctions';
+import { createAdmin, deleteAdmin } from '../lib/edgeFunctions';
 import { timeAgo, formatFull } from '../lib/dateUtils';
 import ResetPasswordModal from '../components/ResetPasswordModal';
 
@@ -213,13 +213,30 @@ export default function AdminsPage() {
   };
 
   const handleDelete = async (admin) => {
-    if (admin.role === 'super_admin') return;
-    if (admin.id === currentAdmin.id) { alert("You can't delete your own account."); return; }
-    if (!confirm(`Permanently delete ${admin.email}?\n\nThis cannot be undone.`)) return;
-    const { error } = await supabase.from('admins').delete().eq('id', admin.id);
-    if (error) alert(`Failed: ${error.message}`);
-    else load();
-  };
+  if (admin.role === 'super_admin') return;
+  if (admin.id === currentAdmin.id) {
+    alert("You can't delete your own account.");
+    return;
+  }
+
+  const isPending = admin.approval_status === 'pending';
+  const confirmMsg = isPending
+    ? `Reject access request from ${admin.email}?\n\nThey will not be able to sign in and can re-apply.`
+    : `Permanently delete ${admin.email}?\n\nThis cannot be undone.`;
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const result = await deleteAdmin(admin.id);
+    if (result?.warning) {
+      // Partial success — admin row deleted but auth cleanup had issues
+      alert(`Removed, but note: ${result.warning}`);
+    }
+    load();
+  } catch (err) {
+    alert(`Failed to delete: ${err.message}`);
+  }
+};
 
   const updateCreate = field => e => setCreateForm({ ...createForm, [field]: e.target.value });
 

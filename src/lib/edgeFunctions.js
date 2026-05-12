@@ -42,3 +42,6 @@ export const verifyPasswordReset = (email, otp, new_password) =>
 
 export const resetOtherPassword = (target_admin_id, new_password) =>
   callFunction('reset-other-password', { target_admin_id, new_password });
+
+export const deleteAdmin = (target_admin_id) =>
+  callFunction('delete-admin', { target_admin_id });
