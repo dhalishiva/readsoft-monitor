@@ -1,11 +1,36 @@
-import { supabase } from './supabase';
+// edgeFunctions.js
+// Gets the Supabase client dynamically from localStorage-persisted tenant
+// rather than from the old hardcoded shim.
+
+import { createClient } from '@supabase/supabase-js';
+
+function getTenantClient() {
+  try {
+    const raw = localStorage.getItem('fs_tenant');
+    if (!raw) throw new Error('No tenant in storage');
+    const tenant = JSON.parse(raw);
+    if (!tenant?.supabase_url || !tenant?.supabase_anon_key) {
+      throw new Error('Incomplete tenant data');
+    }
+    return createClient(tenant.supabase_url, tenant.supabase_anon_key, {
+      auth: {
+        persistSession: true,
+        storageKey: `fs_auth_${tenant.supabase_url}`,
+      },
+    });
+  } catch (err) {
+    throw new Error(`Could not get tenant client: ${err.message}`);
+  }
+}
 
 async function callFunction(name, body) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const client = getTenantClient();
+  const { data: { session } } = await client.auth.getSession();
+
   const headers = {};
   if (session) headers.Authorization = `Bearer ${session.access_token}`;
 
-  const { data, error } = await supabase.functions.invoke(name, { body, headers });
+  const { data, error } = await client.functions.invoke(name, { body, headers });
 
   if (error) {
     let detailMsg = error.message;
