@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
         }
 
         await ensureTransporter();
-        const subject = `[ReadSoft Monitor] Stale mail in ${mb.email} (${stale.length} item${stale.length > 1 ? 's' : ''})`;
+        const subject = `[FlowSentinel] Stale mail in ${mb.email} (${stale.length} item${stale.length > 1 ? 's' : ''})`;
         await transporter.sendMail({
           from: `"${smtp!.from_name}" <${smtp!.from_email}>`,
           to: emails.join(','),
@@ -303,7 +303,7 @@ Deno.serve(async (req) => {
 
             if (emails.length > 0) {
               await ensureTransporter();
-              const subject = `[ReadSoft Monitor] Connection failed: ${mb.email}`;
+              const subject = `[FlowSentinel] Connection failed: ${mb.email}`;
               await transporter.sendMail({
                 from: `"${smtp!.from_name}" <${smtp!.from_email}>`,
                 to: emails.join(','),

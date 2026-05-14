@@ -131,7 +131,7 @@ export default function LoginPage() {
           </div>
         </div>
         <h2 className="text-2xl font-bold text-center text-slate-900 dark:text-white mb-2">
-          ReadSoft Monitor
+          FlowSentinel
         </h2>
         <p className="text-center text-slate-500 dark:text-slate-400 mb-6">
           {!systemInitialized ? 'Create the first admin account' :

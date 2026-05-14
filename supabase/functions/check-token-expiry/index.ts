@@ -154,8 +154,8 @@ Deno.serve(async (req) => {
 
         const days = calculateDaysUntilExpiry(mb);
         const subject = days < 0
-          ? `[ReadSoft Monitor] EXPIRED: Refresh token for ${mb.email}`
-          : `[ReadSoft Monitor] Token expiry warning: ${mb.email} (${days}d remaining)`;
+          ? `[FlowSentinel] EXPIRED: Refresh token for ${mb.email}`
+          : `[FlowSentinel] Token expiry warning: ${mb.email} (${days}d remaining)`;
 
         await transporter.sendMail({
           from: `"${smtp.from_name}" <${smtp.from_email}>`,

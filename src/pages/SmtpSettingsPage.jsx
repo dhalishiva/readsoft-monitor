@@ -8,7 +8,7 @@ export default function SmtpSettingsPage() {
   const { admin } = useAuth();
   const [config, setConfig] = useState({
     host: '', port: 587, username: '', password: '',
-    use_tls: true, from_email: '', from_name: 'ReadSoft Monitor',
+    use_tls: true, from_email: '', from_name: 'FlowSentinel',
   });
   const [useAuth_, setUseAuth] = useState(false);
   const [loading, setLoading] = useState(true);
