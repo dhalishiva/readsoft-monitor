@@ -230,7 +230,7 @@ function ProtectedShell() {
               <Mail size={13} className="text-white" />
             </div>
             <span className="font-semibold text-slate-900 dark:text-white text-sm truncate">
-              ReadSoft Monitor
+              FlowSentinel
             </span>
           </div>
           {/* Current page label on mobile */}
