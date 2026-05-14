@@ -1,9 +1,8 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const AuthContext = createContext({});
 
-// Registry details — stored in localStorage after company code lookup
 const TENANT_KEY = 'fs_tenant';
 
 function getTenantFromStorage() {
@@ -21,13 +20,13 @@ function clearTenantFromStorage() {
   localStorage.removeItem(TENANT_KEY);
 }
 
-// Create a Supabase client dynamically for a given tenant
 function createTenantClient(supabase_url, supabase_anon_key) {
   return createClient(supabase_url, supabase_anon_key, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      storageKey: `fs_auth_${supabase_url}`, // unique key per tenant
+      detectSessionInUrl: false,
+      storageKey: `fs_auth_${supabase_url}`,
     },
   });
 }
@@ -42,6 +41,11 @@ export function AuthProvider({ children }) {
     () => localStorage.getItem('fs_dark') === 'true'
   );
 
+  // Track whether we've done the initial load
+  // so tab-focus auth refreshes don't cause a full reload
+  const initialLoadDone = useRef(false);
+  const adminLoadingRef = useRef(false);
+
   // On mount: check if we have a saved tenant
   useEffect(() => {
     const saved = getTenantFromStorage();
@@ -50,31 +54,58 @@ export function AuthProvider({ children }) {
       setSupabase(client);
       setTenant(saved);
     } else {
+      // No tenant saved — not logged in
       setLoading(false);
     }
   }, []);
 
-  // When supabase client changes, set up auth listener
+  // When supabase client is set/changed, initialise auth
   useEffect(() => {
     if (!supabase) return;
 
     let mounted = true;
+    initialLoadDone.current = false;
+    setLoading(true);
 
+    // Get the current session first
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       if (!mounted) return;
       setSession(s);
-      if (s) loadAdmin(supabase, s.user.id);
-      else setLoading(false);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      if (newSession) {
-        setAdmin(null);
-        loadAdmin(supabase, newSession.user.id);
+      if (s) {
+        loadAdmin(supabase, s.user.id, true);
       } else {
         setAdmin(null);
         setLoading(false);
+        initialLoadDone.current = true;
+      }
+    });
+
+    // Listen for auth state changes
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (!mounted) return;
+
+      // TOKEN_REFRESHED fires when tab regains focus — don't reload the whole UI
+      // Just update the session silently
+      if (event === 'TOKEN_REFRESHED') {
+        setSession(newSession);
+        return;
+      }
+
+      // SIGNED_IN fires on actual login
+      // SIGNED_OUT fires on logout
+      // USER_UPDATED fires on password change
+      setSession(newSession);
+
+      if (newSession) {
+        // Only show loading spinner on initial load, not on token refresh
+        if (!initialLoadDone.current) {
+          setLoading(true);
+        }
+        loadAdmin(supabase, newSession.user.id, !initialLoadDone.current);
+      } else {
+        setAdmin(null);
+        setLoading(false);
+        initialLoadDone.current = true;
       }
     });
 
@@ -84,21 +115,50 @@ export function AuthProvider({ children }) {
     };
   }, [supabase]);
 
-  const loadAdmin = async (client, userId) => {
+  const loadAdmin = async (client, userId, showLoading = false) => {
+    // Prevent duplicate concurrent loads
+    if (adminLoadingRef.current) return;
+    adminLoadingRef.current = true;
+
+    if (showLoading) setLoading(true);
+
     try {
-      const { data } = await client
-        .from('admins').select('*').eq('id', userId).single();
-      setAdmin(data || null);
-    } catch { setAdmin(null); }
-    finally { setLoading(false); }
+      const { data, error } = await client
+        .from('admins')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.warn('loadAdmin error:', error.message);
+        setAdmin(null);
+      } else {
+        setAdmin(data || null);
+      }
+    } catch (err) {
+      console.warn('loadAdmin exception:', err.message);
+      setAdmin(null);
+    } finally {
+      adminLoadingRef.current = false;
+      initialLoadDone.current = true;
+      if (showLoading) setLoading(false);
+      else setLoading(false);
+    }
   };
 
   const refreshAdmin = async () => {
     if (!supabase || !session) return;
-    await loadAdmin(supabase, session.user.id);
+    try {
+      const { data } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+      if (data) setAdmin(data);
+    } catch {}
   };
 
-  // Called after company code lookup — initialises the tenant's Supabase client
+  // Called after company code lookup
   const initialiseTenant = (tenantData) => {
     const client = createTenantClient(tenantData.supabase_url, tenantData.supabase_anon_key);
     saveTenantToStorage(tenantData);
@@ -106,9 +166,12 @@ export function AuthProvider({ children }) {
     setSupabase(client);
   };
 
-  // Called during new signup — same as initialiseTenant
+  // Called during new signup activation
   const registerTenant = (tenantData) => {
-    initialiseTenant(tenantData);
+    saveTenantToStorage(tenantData);
+    setTenant(tenantData);
+    const client = createTenantClient(tenantData.supabase_url, tenantData.supabase_anon_key);
+    setSupabase(client);
   };
 
   const signIn = async (email, password) => {
@@ -119,24 +182,30 @@ export function AuthProvider({ children }) {
   const signUp = async (email, password, full_name, signup_reason) => {
     if (!supabase) return { error: new Error('No tenant selected') };
     return supabase.auth.signUp({
-      email, password,
+      email,
+      password,
       options: { data: { full_name, signup_reason } },
     });
   };
 
   const signOut = async () => {
-    if (supabase) await supabase.auth.signOut();
+    if (supabase) {
+      try { await supabase.auth.signOut(); } catch {}
+    }
     clearTenantFromStorage();
+    initialLoadDone.current = false;
     setSession(null);
     setAdmin(null);
     setTenant(null);
     setSupabase(null);
+    setLoading(false);
   };
 
   const toggleDarkMode = () => {
     setDarkMode(d => {
-      localStorage.setItem('fs_dark', String(!d));
-      return !d;
+      const next = !d;
+      localStorage.setItem('fs_dark', String(next));
+      return next;
     });
   };
 
@@ -146,10 +215,19 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      supabase, tenant, session, admin, loading,
-      darkMode, toggleDarkMode,
-      signIn, signUp, signOut,
-      initialiseTenant, registerTenant, refreshAdmin,
+      supabase,
+      tenant,
+      session,
+      admin,
+      loading,
+      darkMode,
+      toggleDarkMode,
+      signIn,
+      signUp,
+      signOut,
+      initialiseTenant,
+      registerTenant,
+      refreshAdmin,
     }}>
       {children}
     </AuthContext.Provider>

@@ -29,6 +29,7 @@ function ProtectedShell() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // ── 1. Loading — show spinner, nothing else ────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
@@ -37,8 +38,10 @@ function ProtectedShell() {
     );
   }
 
+  // ── 2. No session ──────────────────────────────────────────────────────────
   if (!session) return <Navigate to="/login" replace />;
 
+  // ── 3. No admin row (safety net — should not flash) ────────────────────────
   if (!admin) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-950">
@@ -54,6 +57,7 @@ function ProtectedShell() {
     );
   }
 
+  // ── 4. Pending approval ────────────────────────────────────────────────────
   if (admin.approval_status !== 'approved') {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-950">
@@ -65,10 +69,7 @@ function ProtectedShell() {
           <p className="text-slate-600 dark:text-slate-400 mb-6 text-sm">
             Your access request has been received. An administrator will review it shortly.
           </p>
-          <button
-            onClick={signOut}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
-          >
+          <button onClick={signOut} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm">
             Sign out
           </button>
         </div>
@@ -76,6 +77,7 @@ function ProtectedShell() {
     );
   }
 
+  // ── 5. Account disabled ────────────────────────────────────────────────────
   if (!admin.is_active) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-950">
@@ -91,12 +93,13 @@ function ProtectedShell() {
     );
   }
 
+  // ── 6. All good — render the app ───────────────────────────────────────────
   const navItems = [
-    { path: '/', label: 'Mailboxes', icon: Activity },
-    { path: '/alerts', label: 'Alert History', icon: History },
-    { path: '/smtp', label: 'SMTP', icon: Send },
-    { path: '/admins', label: 'Admin Users', icon: Users },
-    { path: '/profile', label: 'My Profile', icon: User },
+    { path: '/',        label: 'Mailboxes',     icon: Activity },
+    { path: '/alerts',  label: 'Alert History', icon: History  },
+    { path: '/smtp',    label: 'SMTP',          icon: Send     },
+    { path: '/admins',  label: 'Admin Users',   icon: Users    },
+    { path: '/profile', label: 'My Profile',    icon: User     },
   ];
 
   const handleSignOut = async () => {
@@ -106,10 +109,8 @@ function ProtectedShell() {
 
   const closeSidebar = () => setSidebarOpen(false);
 
-  // Sidebar content — shared between mobile overlay and desktop fixed
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Logo */}
       <div className="p-5 flex items-center justify-between">
         <div className="flex items-center gap-3 text-white">
           <div className="h-8 w-8 bg-indigo-500 rounded-lg flex items-center justify-center shrink-0">
@@ -117,16 +118,11 @@ function ProtectedShell() {
           </div>
           <span className="font-bold text-lg leading-tight">FlowSentinel</span>
         </div>
-        {/* Close button — only visible on mobile */}
-        <button
-          onClick={closeSidebar}
-          className="md:hidden text-slate-400 hover:text-white p-1"
-        >
+        <button onClick={closeSidebar} className="md:hidden text-slate-400 hover:text-white p-1">
           <X size={20} />
         </button>
       </div>
 
-      {/* Nav links */}
       <nav className="flex-1 px-3 space-y-0.5">
         {navItems.map(item => {
           const active = location.pathname === item.path;
@@ -148,8 +144,7 @@ function ProtectedShell() {
         })}
       </nav>
 
-      {/* Bottom: dark mode + user */}
-      <div className="px-3 pb-3 space-y-1">
+      <div className="px-3 pb-3">
         <button
           onClick={toggleDarkMode}
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white text-sm transition"
@@ -164,20 +159,18 @@ function ProtectedShell() {
           <Link
             to="/profile"
             onClick={closeSidebar}
-            className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm hover:bg-indigo-400 shrink-0"
+            className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-sm hover:bg-indigo-400 shrink-0 text-white"
             title="My Profile"
           >
             {admin.email[0].toUpperCase()}
           </Link>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">{admin.full_name}</p>
+            <p className="text-sm font-medium text-white truncate">
+              {admin.full_name || admin.email}
+            </p>
             <p className="text-xs text-slate-500 truncate">{admin.role}</p>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="text-slate-400 hover:text-white shrink-0"
-            title="Sign out"
-          >
+          <button onClick={handleSignOut} className="text-slate-400 hover:text-white shrink-0" title="Sign out">
             <LogOut size={16} />
           </button>
         </div>
@@ -188,32 +181,26 @@ function ProtectedShell() {
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden">
 
-      {/* ── MOBILE: overlay backdrop ── */}
+      {/* Mobile backdrop */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
-          onClick={closeSidebar}
-        />
+        <div className="fixed inset-0 z-30 bg-black/50 md:hidden" onClick={closeSidebar} />
       )}
 
-      {/* ── MOBILE: slide-in sidebar ── */}
-      <aside
-        className={`
-          fixed inset-y-0 left-0 z-40 w-72 bg-slate-900 dark:bg-black
-          transform transition-transform duration-200 ease-in-out
-          md:hidden
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
-      >
+      {/* Mobile sidebar */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-40 w-72 bg-slate-900 dark:bg-black
+        transform transition-transform duration-200 ease-in-out md:hidden
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
         <SidebarContent />
       </aside>
 
-      {/* ── DESKTOP: static sidebar ── */}
+      {/* Desktop sidebar */}
       <aside className="hidden md:flex md:flex-col w-64 bg-slate-900 dark:bg-black shrink-0">
         <SidebarContent />
       </aside>
 
-      {/* ── MAIN CONTENT ── */}
+      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* Mobile top bar */}
@@ -221,7 +208,6 @@ function ProtectedShell() {
           <button
             onClick={() => setSidebarOpen(true)}
             className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 -ml-1"
-            aria-label="Open menu"
           >
             <Menu size={22} />
           </button>
@@ -233,20 +219,18 @@ function ProtectedShell() {
               FlowSentinel
             </span>
           </div>
-          {/* Current page label on mobile */}
           <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">
             {navItems.find(n => n.path === location.pathname)?.label ?? ''}
           </span>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 overflow-auto">
           <Routes>
-            <Route path="/" element={<MailboxesPage />} />
-            <Route path="/alerts" element={<AlertHistoryPage />} />
-            <Route path="/smtp" element={<SmtpSettingsPage />} />
-            <Route path="/admins" element={<AdminsPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/"        element={<MailboxesPage />}    />
+            <Route path="/alerts"  element={<AlertHistoryPage />} />
+            <Route path="/smtp"    element={<SmtpSettingsPage />} />
+            <Route path="/admins"  element={<AdminsPage />}       />
+            <Route path="/profile" element={<ProfilePage />}      />
           </Routes>
         </main>
       </div>
