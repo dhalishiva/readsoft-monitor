@@ -5,7 +5,7 @@ import {
   Key, AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
-import { timeAgo, formatFull, formatDate } from '../lib/dateUtils';
+import { timeAgo, formatFull } from '../lib/dateUtils';
 
 export default function ProfilePage() {
   const { admin, refreshAdmin, supabase, tenant } = useAuth();
@@ -99,7 +99,7 @@ export default function ProfilePage() {
             {[
               ['Plan',        <span className="capitalize">{license.type || '—'}</span>],
               ['Mailboxes',   license.max_mailboxes ?? '—'],
-              ['Expires',     expiresDate ? formatDate(license.expires_at) : '—'],
+              ['Expires',     expiresDate ? formatFull(license.expires_at).split(',')[0] : '—'],
               ['Days left',
                 daysLeft !== null
                   ? <span className={daysLeft <= 7 ? 'text-red-600 dark:text-red-400 font-semibold' :
