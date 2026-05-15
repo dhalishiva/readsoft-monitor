@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Plus, Mail, Bell, Key, Trash2,
-  RefreshCw, CheckCircle, Edit2, AlertTriangle,
+  RefreshCw, CheckCircle, Edit2, AlertTriangle, X,
 } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import Badge from '../components/Badge';
@@ -19,6 +19,12 @@ export default function MailboxesPage() {
   const [regenFor, setRegenFor]   = useState(null);
   const [alertFor, setAlertFor]   = useState(null);
 
+  // Confirm modals
+  const [deleteTarget, setDeleteTarget]   = useState(null);
+  const [markDoneTarget, setMarkDoneTarget] = useState(null);
+  const [deleting, setDeleting]           = useState(false);
+  const [markingDone, setMarkingDone]     = useState(false);
+
   const load = async () => {
     setLoading(true);
     const { data } = await supabase
@@ -29,20 +35,24 @@ export default function MailboxesPage() {
 
   useEffect(() => { load(); }, []);
 
-  const handleDelete = async (id) => {
-    if (!confirm('Remove this mailbox? This cannot be undone.')) return;
-    await supabase.from('mailboxes').delete().eq('id', id);
+  const handleDelete = async () => {
+    setDeleting(true);
+    await supabase.from('mailboxes').delete().eq('id', deleteTarget.id);
+    setDeleteTarget(null);
+    setDeleting(false);
     load();
   };
 
-  const handleMarkRegenerated = async (id) => {
-    if (!confirm('Mark token as regenerated? This resets the 90-day timer and stops alerts.')) return;
+  const handleMarkRegenerated = async () => {
+    setMarkingDone(true);
     await supabase.from('mailboxes').update({
       token_generated_at: new Date().toISOString(),
-      trigger_completed: true,
-      token_expires_at: null,
-      token_expiry_type: 'auto',
-    }).eq('id', id);
+      trigger_completed:  true,
+      token_expires_at:   null,
+      token_expiry_type:  'auto',
+    }).eq('id', markDoneTarget.id);
+    setMarkDoneTarget(null);
+    setMarkingDone(false);
     load();
   };
 
@@ -119,26 +129,28 @@ export default function MailboxesPage() {
 
               <div className="flex gap-1 pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
                 <button onClick={() => setAlertFor(mb)}
-                  className="flex-1 px-2 py-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-xs flex items-center justify-center gap-1.5 text-slate-700 dark:text-slate-300">
+                  className="flex-1 px-2 py-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-xs flex items-center justify-center gap-1.5 text-slate-700 dark:text-slate-300"
+                  title="Configure alerts">
                   <Bell size={13} /> Alerts
                 </button>
                 <button onClick={() => setRegenFor(mb)}
-                  className="flex-1 px-2 py-2 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 rounded-lg text-xs flex items-center justify-center gap-1.5">
+                  className="flex-1 px-2 py-2 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 rounded-lg text-xs flex items-center justify-center gap-1.5"
+                  title="Regenerate token">
                   <Key size={13} /> Regen
                 </button>
                 <button onClick={() => setEditFor(mb)}
                   className="px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-lg"
-                  title="Edit">
+                  title="Edit mailbox">
                   <Edit2 size={15} />
                 </button>
-                <button onClick={() => handleMarkRegenerated(mb.id)}
+                <button onClick={() => setMarkDoneTarget(mb)}
                   className="px-3 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg"
-                  title="Mark as regenerated">
+                  title="Mark token as regenerated">
                   <CheckCircle size={15} />
                 </button>
-                <button onClick={() => handleDelete(mb.id)}
+                <button onClick={() => setDeleteTarget(mb)}
                   className="px-3 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg"
-                  title="Delete">
+                  title="Remove mailbox">
                   <Trash2 size={15} />
                 </button>
               </div>
@@ -147,7 +159,71 @@ export default function MailboxesPage() {
         </div>
       )}
 
-      {showAdd && <AddMailboxModal onClose={() => setShowAdd(false)} onCreated={load} />}
+      {/* ── Delete confirmation modal ── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 mx-auto mb-4">
+              <Trash2 size={20} className="text-red-600 dark:text-red-400" />
+            </div>
+            <h3 className="font-semibold text-slate-900 dark:text-white text-center mb-2">Remove mailbox?</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-1">
+              This will permanently remove
+            </p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 text-center mb-4 break-all">
+              {deleteTarget.email}
+            </p>
+            <p className="text-xs text-red-600 dark:text-red-400 text-center mb-5">
+              All alert history for this mailbox will also be deleted.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTarget(null)} disabled={deleting}
+                className="flex-1 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-medium disabled:opacity-50">
+                Cancel
+              </button>
+              <button onClick={handleDelete} disabled={deleting}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium flex items-center justify-center gap-2">
+                {deleting ? <RefreshCw className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                {deleting ? 'Removing...' : 'Remove'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mark as regenerated confirmation modal ── */}
+      {markDoneTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-center h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 mx-auto mb-4">
+              <CheckCircle size={20} className="text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <h3 className="font-semibold text-slate-900 dark:text-white text-center mb-2">Mark as regenerated?</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-4">
+              This resets the 90-day token timer and stops expiry alerts for{' '}
+              <strong className="text-slate-700 dark:text-slate-300">{markDoneTarget.email}</strong>.
+            </p>
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-5">
+              <p className="text-xs text-amber-800 dark:text-amber-300 text-center">
+                Only use this if you have already updated the token in ReadSoft's backend config.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setMarkDoneTarget(null)} disabled={markingDone}
+                className="flex-1 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-medium disabled:opacity-50">
+                Cancel
+              </button>
+              <button onClick={handleMarkRegenerated} disabled={markingDone}
+                className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium flex items-center justify-center gap-2">
+                {markingDone ? <RefreshCw className="animate-spin" size={14} /> : <CheckCircle size={14} />}
+                {markingDone ? 'Saving...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAdd  && <AddMailboxModal onClose={() => setShowAdd(false)} onCreated={load} />}
       {editFor  && <AddMailboxModal existing={editFor} onClose={() => setEditFor(null)} onCreated={load} />}
       {regenFor && <RegenerateTokenModal mailbox={regenFor} onClose={() => setRegenFor(null)} onSuccess={load} />}
       {alertFor && <AlertConfigModal mailbox={alertFor} onClose={() => setAlertFor(null)} onSaved={load} />}
