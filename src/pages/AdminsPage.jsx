@@ -22,10 +22,11 @@ export default function AdminsPage() {
   const [deleteError, setDeleteError]   = useState('');
 
   // Reset password modal
-  const [resetFor, setResetFor]   = useState(null);
-  const [resetPwd, setResetPwd]   = useState('');
-  const [resetting, setResetting] = useState(false);
-  const [resetMsg, setResetMsg]   = useState(null);
+  const [resetFor, setResetFor]         = useState(null);
+  const [resetPwd, setResetPwd]         = useState('');
+  const [resetConfirm, setResetConfirm] = useState('');
+  const [resetting, setResetting]       = useState(false);
+  const [resetMsg, setResetMsg]         = useState(null);
 
   // Dropdown position tracking
   const rowRefs = useRef({});
@@ -95,11 +96,16 @@ export default function AdminsPage() {
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setResetMsg(null);
+    if (resetPwd !== resetConfirm) {
+      setResetMsg({ type: 'error', text: 'Passwords do not match.' });
+      return;
+    }
     setResetting(true);
     try {
       await resetOtherPassword(supabase, resetFor.id, resetPwd);
       setResetMsg({ type: 'success', text: 'Password updated successfully.' });
       setResetPwd('');
+      setResetConfirm('');
     } catch (err) {
       setResetMsg({ type: 'error', text: err.message });
     } finally { setResetting(false); }
@@ -388,7 +394,7 @@ export default function AdminsPage() {
               <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 <KeyRound size={16} className="text-indigo-500" /> Reset Password
               </h3>
-              <button onClick={() => { setResetFor(null); setResetMsg(null); }}
+              <button onClick={() => { setResetFor(null); setResetMsg(null); setResetPwd(''); setResetConfirm(''); }}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-white">
                 <X size={18} />
               </button>
@@ -398,24 +404,45 @@ export default function AdminsPage() {
               <strong className="text-slate-700 dark:text-slate-300">{resetFor.email}</strong>
             </p>
             <form onSubmit={handleResetPassword} className="space-y-3">
-              <input
-                type="password" required minLength={6}
-                placeholder="New password (min 6 chars)"
-                value={resetPwd}
-                onChange={e => setResetPwd(e.target.value)}
-                className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-              />
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">New password</label>
+                <input
+                  type="password" required minLength={6}
+                  placeholder="Min 6 characters"
+                  value={resetPwd}
+                  onChange={e => setResetPwd(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Confirm new password</label>
+                <input
+                  type="password" required minLength={6}
+                  placeholder="Re-enter password"
+                  value={resetConfirm}
+                  onChange={e => setResetConfirm(e.target.value)}
+                  className={`w-full px-3 py-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white dark:bg-slate-800 dark:text-white ${
+                    resetConfirm && resetPwd !== resetConfirm
+                      ? 'border-red-400 dark:border-red-600'
+                      : 'border-slate-300 dark:border-slate-700'
+                  }`}
+                />
+                {resetConfirm && resetPwd !== resetConfirm && (
+                  <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+                )}
+              </div>
               {resetMsg && (
                 <p className={`text-sm ${resetMsg.type === 'error' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                   {resetMsg.text}
                 </p>
               )}
               <div className="flex gap-2 pt-1">
-                <button type="button" onClick={() => { setResetFor(null); setResetMsg(null); }}
+                <button type="button" onClick={() => { setResetFor(null); setResetMsg(null); setResetPwd(''); setResetConfirm(''); }}
                   className="flex-1 py-2 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-sm">
                   Cancel
                 </button>
-                <button type="submit" disabled={resetting || resetPwd.length < 6}
+                <button type="submit"
+                  disabled={resetting || resetPwd.length < 6 || resetPwd !== resetConfirm}
                   className="flex-1 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium">
                   {resetting ? 'Saving...' : 'Update password'}
                 </button>
