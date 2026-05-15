@@ -17,7 +17,7 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
     stale_threshold_minutes: existing?.stale_threshold_minutes || 15,
   });
   const [recipients, setRecipients] = useState('');
-  const [step, setStep]   = useState('idle'); // idle | checking | validating | saving
+  const [step, setStep]   = useState('idle');
   const [error, setError] = useState('');
 
   const update = field => e => setForm({ ...form, [field]: e.target.value });
@@ -45,7 +45,7 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
           }
         }
       } catch {
-        // If license check fails, fall through and let them continue
+        // fall through if license check fails
       }
     }
 
@@ -66,9 +66,7 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
 
       setStep('validating');
       try {
-        // validate-mailbox returns { success: true } only.
-        // We save form.refresh_token as-is so DB mirrors ReadSoft config exactly.
-        await validateMailbox(form.tenant_id, form.client_id, form.refresh_token);
+        await validateMailbox(supabase, form.tenant_id, form.client_id, form.refresh_token);
       } catch (err) {
         setError(`Microsoft rejected the credentials: ${err.message}`);
         setStep('idle');
@@ -159,8 +157,8 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
             <ShieldCheck size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
             <p className="text-xs text-indigo-800 dark:text-indigo-300">
               {isEdit
-                ? 'Leave Refresh Token blank to keep the existing one. Provide a new token only if you have updated ReadSoft\'s config with it.'
-                : 'Token is validated with Microsoft, then stored exactly as entered. It must match what\'s in ReadSoft\'s config.'}
+                ? "Leave Refresh Token blank to keep the existing one. Provide a new token only if you have updated ReadSoft's config with it."
+                : "Token is validated with Microsoft, then stored exactly as entered. It must match what's in ReadSoft's config."}
             </p>
           </div>
 

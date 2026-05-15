@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { lookupTenant, validateLicense } from '../lib/registry';
+import { requestPasswordReset, verifyPasswordReset } from '../lib/edgeFunctions';
 
 const SCREEN = {
   COMPANY:  'company',
@@ -21,34 +22,33 @@ export default function LoginPage() {
 
   // Company code
   const [companyCode, setCompanyCode] = useState('');
-  const [lookingUp, setLookingUp] = useState(false);
+  const [lookingUp, setLookingUp]     = useState(false);
   const [lookupError, setLookupError] = useState('');
 
   // Login / forgot
-  const [loginMode, setLoginMode] = useState('login'); // login | forgot
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [forgotStep, setForgotStep] = useState('email'); // email | verify
-  const [otp, setOtp] = useState('');
+  const [loginMode, setLoginMode]   = useState('login');
+  const [email, setEmail]           = useState('');
+  const [password, setPassword]     = useState('');
+  const [error, setError]           = useState('');
+  const [info, setInfo]             = useState('');
+  const [loading, setLoading]       = useState(false);
+  const [forgotStep, setForgotStep] = useState('email');
+  const [otp, setOtp]               = useState('');
   const [newPassword, setNewPassword] = useState('');
 
   // Activate
-  const [activateStep, setActivateStep] = useState('license');
-  const [licenseKey, setLicenseKey] = useState('');
-  const [activateSbUrl, setActivateSbUrl] = useState('');
+  const [activateStep, setActivateStep]         = useState('license');
+  const [licenseKey, setLicenseKey]             = useState('');
+  const [activateSbUrl, setActivateSbUrl]       = useState('');
   const [activateSbAnonKey, setActivateSbAnonKey] = useState('');
   const [activateCompanyName, setActivateCompanyName] = useState('');
   const [activateCompanyCode, setActivateCompanyCode] = useState('');
-  const [activateEmail, setActivateEmail] = useState('');
+  const [activateEmail, setActivateEmail]       = useState('');
   const [activatePassword, setActivatePassword] = useState('');
-  const [activateName, setActivateName] = useState('');
-  const [activating, setActivating] = useState(false);
-  const [activateError, setActivateError] = useState('');
+  const [activateName, setActivateName]         = useState('');
+  const [activating, setActivating]             = useState(false);
+  const [activateError, setActivateError]       = useState('');
 
-  // Skip company code screen if tenant already in localStorage
   useEffect(() => {
     if (supabase) setScreen(SCREEN.LOGIN);
   }, [supabase]);
@@ -60,7 +60,7 @@ export default function LoginPage() {
     setForgotStep('email'); setOtp(''); setNewPassword('');
   };
 
-  // ── Company code lookup ────────────────────────────────────────────────────
+  // ── Company code ──────────────────────────────────────────────────────────
   const handleCompanyLookup = async (e) => {
     e.preventDefault();
     setLookupError('');
@@ -77,12 +77,10 @@ export default function LoginPage() {
       setScreen(SCREEN.LOGIN);
     } catch (err) {
       setLookupError(err.message);
-    } finally {
-      setLookingUp(false);
-    }
+    } finally { setLookingUp(false); }
   };
 
-  // ── Sign in ────────────────────────────────────────────────────────────────
+  // ── Sign in ───────────────────────────────────────────────────────────────
   const handleLogin = async (e) => {
     e.preventDefault(); reset(); setLoading(true);
     const { error } = await signIn(email, password);
@@ -91,24 +89,22 @@ export default function LoginPage() {
     else navigate('/');
   };
 
-  // ── Forgot: request OTP ────────────────────────────────────────────────────
+  // ── Forgot: request OTP ───────────────────────────────────────────────────
   const handleForgotRequest = async (e) => {
     e.preventDefault(); reset(); setLoading(true);
     try {
-      const { requestPasswordReset } = await import('../lib/edgeFunctions');
-      await requestPasswordReset(email);
+      await requestPasswordReset(supabase, email);
     } catch { /* silent */ }
-    setInfo('If an account exists for this email, a 6-digit code has been sent. Check your inbox.');
+    setInfo('If an account exists for this email, a 6-digit code has been sent.');
     setForgotStep('verify');
     setLoading(false);
   };
 
-  // ── Forgot: verify OTP + new password ─────────────────────────────────────
+  // ── Forgot: verify OTP + new password ────────────────────────────────────
   const handleForgotVerify = async (e) => {
     e.preventDefault(); reset(); setLoading(true);
     try {
-      const { verifyPasswordReset } = await import('../lib/edgeFunctions');
-      await verifyPasswordReset(email, otp, newPassword);
+      await verifyPasswordReset(supabase, email, otp, newPassword);
       setLoginMode('login');
       setForgotStep('email'); setOtp(''); setNewPassword(''); setPassword('');
       setInfo('Password reset successfully. Sign in with your new password.');
@@ -117,37 +113,31 @@ export default function LoginPage() {
     } finally { setLoading(false); }
   };
 
-  // ── Activate: step 1 ──────────────────────────────────────────────────────
+  // ── Activate step 1 ───────────────────────────────────────────────────────
   const handleLicenseStep = (e) => {
-    e.preventDefault();
-    setActivateError('');
+    e.preventDefault(); setActivateError('');
     if (!licenseKey.trim().toUpperCase().startsWith('FS')) {
-      setActivateError('Invalid license key format. Keys start with FS.');
-      return;
+      setActivateError('Invalid license key format. Keys start with FS.'); return;
     }
     setActivateStep('supabase');
   };
 
-  // ── Activate: step 2 ──────────────────────────────────────────────────────
+  // ── Activate step 2 ───────────────────────────────────────────────────────
   const handleSupabaseStep = (e) => {
-    e.preventDefault();
-    setActivateError('');
+    e.preventDefault(); setActivateError('');
     try { new URL(activateSbUrl); }
-    catch { setActivateError('Please enter a valid Supabase URL (e.g. https://xxxx.supabase.co)'); return; }
+    catch { setActivateError('Please enter a valid Supabase URL'); return; }
     if (!activateSbAnonKey.startsWith('eyJ')) {
-      setActivateError('Anon key should start with eyJ — check you copied the right key');
-      return;
+      setActivateError('Anon key should start with eyJ'); return;
     }
     setActivateStep('account');
   };
 
-  // ── Activate: step 3 ──────────────────────────────────────────────────────
+  // ── Activate step 3 ───────────────────────────────────────────────────────
   const handleActivate = async (e) => {
-    e.preventDefault();
-    setActivateError('');
+    e.preventDefault(); setActivateError('');
     if (activateCompanyCode.length !== 4) {
-      setActivateError('Company code must be exactly 4 characters');
-      return;
+      setActivateError('Company code must be exactly 4 characters'); return;
     }
     setActivating(true);
     try {
@@ -161,14 +151,14 @@ export default function LoginPage() {
       );
 
       const tenantData = {
-        company_name: result.company_name,
-        company_code: result.company_code,
-        supabase_url: activateSbUrl.trim().replace(/\/$/, ''),
+        company_name:      result.company_name,
+        company_code:      result.company_code,
+        supabase_url:      activateSbUrl.trim().replace(/\/$/, ''),
         supabase_anon_key: activateSbAnonKey.trim(),
         license: {
-          type: result.license_type,
-          expires_at: result.expires_at,
-          max_mailboxes: result.max_mailboxes,
+          type:           result.license_type,
+          expires_at:     result.expires_at,
+          max_mailboxes:  result.max_mailboxes,
         },
       };
 
@@ -188,8 +178,7 @@ export default function LoginPage() {
 
       const { data: signInData, error: signInErr } =
         await tenantClient.auth.signInWithPassword({
-          email: activateEmail.trim(),
-          password: activatePassword,
+          email: activateEmail.trim(), password: activatePassword,
         });
       if (signInErr) throw new Error(`Sign in failed: ${signInErr.message}`);
       if (!signInData.session) throw new Error('No session returned');
@@ -201,12 +190,9 @@ export default function LoginPage() {
     } catch (err) {
       setActivateError(err.message);
       localStorage.removeItem('fs_tenant');
-    } finally {
-      setActivating(false);
-    }
+    } finally { setActivating(false); }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-100 to-indigo-50 dark:from-slate-950 dark:to-indigo-950">
       <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-8">
@@ -221,7 +207,7 @@ export default function LoginPage() {
           FlowSentinel
         </h2>
 
-        {/* ── SCREEN: Company code ── */}
+        {/* ── Company code screen ── */}
         {screen === SCREEN.COMPANY && (
           <>
             <p className="text-center text-slate-500 dark:text-slate-400 mb-6 text-sm">
@@ -235,67 +221,48 @@ export default function LoginPage() {
                 <div className="relative">
                   <Building2 size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
-                    type="text"
-                    value={companyCode}
-                    onChange={e => setCompanyCode(
-                      e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4)
-                    )}
-                    required maxLength={4}
-                    placeholder="e.g. ACEK"
-                    autoFocus
+                    type="text" value={companyCode} maxLength={4}
+                    onChange={e => setCompanyCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4))}
+                    required placeholder="e.g. ACEK" autoFocus
                     className="w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono tracking-widest uppercase text-center text-lg"
                   />
                 </div>
-                <p className="text-xs text-slate-400 mt-1 text-center">
-                  4-character code provided during setup
-                </p>
+                <p className="text-xs text-slate-400 mt-1 text-center">4-character code provided during setup</p>
               </div>
               {lookupError && <Msg type="error">{lookupError}</Msg>}
-              <button
-                type="submit"
-                disabled={lookingUp || companyCode.length !== 4}
-                className="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
+              <button type="submit" disabled={lookingUp || companyCode.length !== 4}
+                className="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
                 {lookingUp
                   ? <RefreshCw className="animate-spin" size={18} />
                   : <><span>Continue</span><ArrowRight size={16} /></>
                 }
               </button>
             </form>
-
             <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">New customer?</p>
-              <button
-                onClick={() => setScreen(SCREEN.ACTIVATE)}
-                className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
-              >
+              <p className="text-xs text-slate-500 mb-3">New customer?</p>
+              <button onClick={() => setScreen(SCREEN.ACTIVATE)}
+                className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
                 Activate a license key
               </button>
             </div>
           </>
         )}
 
-        {/* ── SCREEN: Login ── */}
+        {/* ── Login screen ── */}
         {screen === SCREEN.LOGIN && (
           <>
             <p className="text-center text-slate-500 dark:text-slate-400 mb-6 text-sm">
               {loginMode === 'forgot' ? 'Reset your password' : 'Sign in to continue'}
             </p>
 
-            {/* Sign in */}
             {loginMode === 'login' && (
               <form onSubmit={handleLogin} className="space-y-4">
-                <Field label="Email" type="email" icon={Mail}
-                  value={email} onChange={setEmail} required />
+                <Field label="Email" type="email" icon={Mail} value={email} onChange={setEmail} required />
                 <div>
-                  <Field label="Password" type="password" icon={Lock}
-                    value={password} onChange={setPassword} required />
+                  <Field label="Password" type="password" icon={Lock} value={password} onChange={setPassword} required />
                   <div className="flex justify-end mt-1.5">
-                    <button
-                      type="button"
-                      onClick={() => switchMode('forgot')}
-                      className="text-xs text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-                    >
+                    <button type="button" onClick={() => switchMode('forgot')}
+                      className="text-xs text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400">
                       Forgot password?
                     </button>
                   </div>
@@ -306,30 +273,27 @@ export default function LoginPage() {
               </form>
             )}
 
-            {/* Forgot: email step */}
             {loginMode === 'forgot' && forgotStep === 'email' && (
               <form onSubmit={handleForgotRequest} className="space-y-4">
                 <button type="button" onClick={() => switchMode('login')}
-                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 mb-1">
+                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 mb-1">
                   <ArrowLeft size={12} /> Back to sign in
                 </button>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
                   Enter your email and we'll send a 6-digit reset code.
                 </p>
-                <Field label="Email" type="email" icon={Mail}
-                  value={email} onChange={setEmail} required />
+                <Field label="Email" type="email" icon={Mail} value={email} onChange={setEmail} required />
                 {error && <Msg type="error">{error}</Msg>}
                 {info && <Msg type="info">{info}</Msg>}
                 <SubmitBtn loading={loading}>Send reset code</SubmitBtn>
               </form>
             )}
 
-            {/* Forgot: verify step */}
             {loginMode === 'forgot' && forgotStep === 'verify' && (
               <form onSubmit={handleForgotVerify} className="space-y-4">
                 <button type="button"
                   onClick={() => { setForgotStep('email'); setOtp(''); setNewPassword(''); reset(); }}
-                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 mb-1">
+                  className="flex items-center gap-1 text-xs text-slate-500 hover:text-indigo-600 mb-1">
                   <ArrowLeft size={12} /> Use a different email
                 </button>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -358,17 +322,15 @@ export default function LoginPage() {
               </form>
             )}
 
-            {/* Different company */}
             <button
               onClick={() => { setScreen(SCREEN.COMPANY); setError(''); setInfo(''); switchMode('login'); }}
-              className="mt-5 w-full text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center justify-center gap-1"
-            >
+              className="mt-5 w-full text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center justify-center gap-1">
               <ArrowLeft size={12} /> Different company
             </button>
           </>
         )}
 
-        {/* ── SCREEN: Activate license ── */}
+        {/* ── Activate screen ── */}
         {screen === SCREEN.ACTIVATE && (
           <>
             <p className="text-center text-slate-500 dark:text-slate-400 mb-6 text-sm">
@@ -401,20 +363,15 @@ export default function LoginPage() {
               })}
             </div>
 
-            {/* Step 1: License key */}
+            {/* Step 1 */}
             {activateStep === 'license' && (
               <form onSubmit={handleLicenseStep} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    License key
-                  </label>
-                  <input type="text" value={licenseKey}
-                    onChange={e => setLicenseKey(e.target.value)}
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">License key</label>
+                  <input type="text" value={licenseKey} onChange={e => setLicenseKey(e.target.value)}
                     required placeholder="FS.XXXX.XXXX.XXXX" autoFocus
                     className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm" />
-                  <p className="text-xs text-slate-400 mt-1">
-                    Your license key was emailed to you after purchase.
-                  </p>
+                  <p className="text-xs text-slate-400 mt-1">Your license key was emailed to you after purchase.</p>
                 </div>
                 {activateError && <Msg type="error">{activateError}</Msg>}
                 <button type="submit" disabled={!licenseKey}
@@ -424,25 +381,20 @@ export default function LoginPage() {
               </form>
             )}
 
-            {/* Step 2: Supabase details */}
+            {/* Step 2 */}
             {activateStep === 'supabase' && (
               <form onSubmit={handleSupabaseStep} className="space-y-4">
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-xs text-blue-700 dark:text-blue-300">
-                  FlowSentinel stores your data in your own Supabase project.
                   Find these values in Supabase Dashboard → Project Settings → API.
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Supabase project URL
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Supabase project URL</label>
                   <input type="url" required placeholder="https://xxxxxxxxxxxx.supabase.co"
                     value={activateSbUrl} onChange={e => setActivateSbUrl(e.target.value)}
                     className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-mono" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Anon public key
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Anon public key</label>
                   <textarea required rows={3}
                     placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                     value={activateSbAnonKey} onChange={e => setActivateSbAnonKey(e.target.value.trim())}
@@ -462,7 +414,7 @@ export default function LoginPage() {
               </form>
             )}
 
-            {/* Step 3: Account details */}
+            {/* Step 3 */}
             {activateStep === 'account' && (
               <form onSubmit={handleActivate} className="space-y-3">
                 <div>
@@ -475,28 +427,20 @@ export default function LoginPage() {
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Company code</label>
                   <input type="text" required placeholder="ACEK" maxLength={4}
                     value={activateCompanyCode}
-                    onChange={e => setActivateCompanyCode(
-                      e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4)
-                    )}
+                    onChange={e => setActivateCompanyCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4))}
                     className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono tracking-widest text-center text-lg uppercase" />
                   <p className="text-xs text-slate-400 mt-1">
                     4 letters or numbers. Your team types this to sign in.
                     {activateCompanyCode.length === 4 && (
-                      <span className="text-indigo-500 ml-1 font-medium">
-                        Login code: <strong>{activateCompanyCode}</strong>
-                      </span>
+                      <span className="text-indigo-500 ml-1 font-medium">Login code: <strong>{activateCompanyCode}</strong></span>
                     )}
                   </p>
                 </div>
-                <Field label="Your full name" icon={Building2}
-                  value={activateName} onChange={setActivateName} required />
-                <Field label="Your email" type="email" icon={Mail}
-                  value={activateEmail} onChange={setActivateEmail} required />
+                <Field label="Your full name" icon={Building2} value={activateName} onChange={setActivateName} required />
+                <Field label="Your email" type="email" icon={Mail} value={activateEmail} onChange={setActivateEmail} required />
                 <Field label="Password (min 6 chars)" type="password" icon={Lock}
                   value={activatePassword} onChange={setActivatePassword} required minLength={6} />
-                <p className="text-xs text-slate-400">
-                  This account becomes the super admin for your organisation.
-                </p>
+                <p className="text-xs text-slate-400">This account becomes the super admin for your organisation.</p>
                 {activateError && <Msg type="error">{activateError}</Msg>}
                 <div className="flex gap-2 pt-1">
                   <button type="button" onClick={() => setActivateStep('supabase')}
@@ -515,14 +459,8 @@ export default function LoginPage() {
             )}
 
             <button
-              onClick={() => {
-                setScreen(SCREEN.COMPANY);
-                setActivateStep('license');
-                setActivateError('');
-                setActivateCompanyCode('');
-              }}
-              className="mt-5 w-full text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center justify-center gap-1"
-            >
+              onClick={() => { setScreen(SCREEN.COMPANY); setActivateStep('license'); setActivateError(''); setActivateCompanyCode(''); }}
+              className="mt-5 w-full text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center justify-center gap-1">
               <ArrowLeft size={12} /> Already have a company code? Sign in
             </button>
           </>
@@ -537,9 +475,9 @@ function Field({ label, type = 'text', icon: Icon, value, onChange, ...rest }) {
     <div>
       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{label}</label>
       <div className="relative">
-        <Icon size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        {Icon && <Icon size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />}
         <input type={type} value={value} onChange={e => onChange(e.target.value)}
-          className="w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm"
+          className={`w-full ${Icon ? 'pl-10' : 'pl-3'} pr-3 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm`}
           {...rest} />
       </div>
     </div>
