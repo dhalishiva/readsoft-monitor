@@ -44,26 +44,26 @@ export default function SupportPage() {
 
   // Load tickets from registry
   const loadTickets = async () => {
-    if (!tenant?.company_code) return;
-    setLoading(true);
-    try {
-      // Use the registry anon key to query tickets directly
-      const res = await fetch(
-        `${import.meta.env.VITE_REGISTRY_URL}/rest/v1/support_tickets?company_code=eq.${tenant.company_code}&order=created_at.desc&select=id,subject,status,priority,category,created_at,admin_reply,replied_at`,
-        {
-          headers: {
-            'apikey':        import.meta.env.VITE_REGISTRY_ANON_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_REGISTRY_ANON_KEY}`,
-          },
-        }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setTickets(data || []);
+  if (!tenant?.company_code) return
+  setLoading(true)
+  try {
+    const res = await fetch(
+      `${import.meta.env.VITE_REGISTRY_URL}/functions/v1/get-tickets`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_REGISTRY_ANON_KEY,
+          'Authorization': `Bearer ${import.meta.env.VITE_REGISTRY_ANON_KEY}`,
+        },
+        body: JSON.stringify({ company_code: tenant.company_code }),
       }
-    } catch { /* silent */ }
-    finally { setLoading(false); }
-  };
+    )
+    const data = await res.json()
+    if (data.success) setTickets(data.tickets || [])
+  } catch { /* silent */ }
+  finally { setLoading(false) }
+}
 
   useEffect(() => { loadTickets(); }, [tenant?.company_code]);
 
