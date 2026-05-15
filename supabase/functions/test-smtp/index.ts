@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       await transporter.sendMail({
         from: `"${smtp.from_name}" <${smtp.from_email}>`,
         to: test_recipient,
-        subject: 'ReadSoft Monitor - Test Email',
+        subject: 'FlowSentinel Monitor - Test Email',
         html: `<h2>SMTP Test Successful</h2><p>If you received this, your SMTP configuration is working correctly.</p>`,
       });
     } catch (e) {
