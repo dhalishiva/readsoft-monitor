@@ -84,20 +84,26 @@ export function AuthProvider({ children }) {
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
   if (!mounted) return;
 
-  // TOKEN_REFRESHED fires when tab regains focus — don't reload the whole UI
+  // TOKEN_REFRESHED — silent session update
   if (event === 'TOKEN_REFRESHED') {
     setSession(newSession);
     return;
   }
 
-  // USER_UPDATED fires on password change — session is fine, no need to reload admin
+  // USER_UPDATED — password changed, session is fine
   if (event === 'USER_UPDATED') {
     setSession(newSession);
     return;
   }
 
-  // SIGNED_IN fires on actual login
-  // SIGNED_OUT fires on logout
+  // SIGNED_IN while already logged in — this fires when we call
+  // signInWithPassword to verify current password on profile page.
+  // Don't reload admin if we're already authenticated.
+  if (event === 'SIGNED_IN' && initialLoadDone.current) {
+    setSession(newSession);
+    return;
+  }
+
   setSession(newSession);
 
   if (newSession) {
