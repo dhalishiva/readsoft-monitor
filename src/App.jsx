@@ -11,7 +11,7 @@ import MailboxesPage from './pages/MailboxesPage';
 import SmtpSettingsPage from './pages/SmtpSettingsPage';
 import AlertHistoryPage from './pages/AlertHistoryPage';
 import ProfilePage from './pages/ProfilePage';
-import SupportPage from './pages/SupportPage';
+import SupportPage from './pages/Supportpage';
 
 export default function App() {
   return (
