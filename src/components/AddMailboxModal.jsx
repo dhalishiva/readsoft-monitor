@@ -8,13 +8,13 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
   const isEdit = !!existing;
 
   const [form, setForm] = useState({
-    email:                    existing?.email || '',
-    imap_host:                existing?.imap_host || 'outlook.office365.com',
-    imap_port:                existing?.imap_port || 993,
-    tenant_id:                existing?.tenant_id || '',
-    client_id:                existing?.client_id || '',
-    refresh_token:            '',
-    stale_threshold_minutes:  existing?.stale_threshold_minutes || 15,
+    email:                   existing?.email || '',
+    imap_host:               existing?.imap_host || 'outlook.office365.com',
+    imap_port:               existing?.imap_port || 993,
+    tenant_id:               existing?.tenant_id || '',
+    client_id:               existing?.client_id || '',
+    refresh_token:           '',
+    stale_threshold_minutes: existing?.stale_threshold_minutes || 15,
   });
   const [recipients, setRecipients] = useState('');
   const [step, setStep]   = useState('idle'); // idle | checking | validating | saving
@@ -26,36 +26,36 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
     e.preventDefault();
     setError('');
 
-    // ── License limit check (create only) ─────────────────────────────────
+    // ── License limit check (create only) ──────────────────────────────────
     if (!isEdit) {
       setStep('checking');
-      const maxMailboxes = tenant?.license?.max_mailboxes;
-
-      if (maxMailboxes) {
-        const { count, error: countErr } = await supabase
-          .from('mailboxes')
-          .select('*', { count: 'exact', head: true });
-
-        if (!countErr && count >= maxMailboxes) {
-          setError(
-            `Your license allows a maximum of ${maxMailboxes} mailbox${maxMailboxes === 1 ? '' : 'es'}. ` +
-            `Contact support to upgrade your plan.`
-          );
-          setStep('idle');
-          return;
+      try {
+        const maxMailboxes = tenant?.license?.max_mailboxes;
+        if (maxMailboxes) {
+          const { count, error: countErr } = await supabase
+            .from('mailboxes')
+            .select('*', { count: 'exact', head: true });
+          if (!countErr && count >= maxMailboxes) {
+            setError(
+              `Your license allows a maximum of ${maxMailboxes} mailbox${maxMailboxes === 1 ? '' : 'es'}. ` +
+              `Contact support to upgrade your plan.`
+            );
+            setStep('idle');
+            return;
+          }
         }
+      } catch {
+        // If license check fails, fall through and let them continue
       }
     }
 
-    // ── Decide whether to validate credentials ─────────────────────────────
-    const tokenChanged  = form.refresh_token.trim().length > 0;
-    const credsChanged  =
+    // ── Decide whether to validate credentials ──────────────────────────────
+    const tokenChanged = form.refresh_token.trim().length > 0;
+    const credsChanged =
       !isEdit ||
       tokenChanged ||
-      form.tenant_id !== existing.tenant_id ||
-      form.client_id !== existing.client_id;
-
-    let validatedToken = existing?.refresh_token;
+      form.tenant_id !== existing?.tenant_id ||
+      form.client_id !== existing?.client_id;
 
     if (credsChanged) {
       if (!form.refresh_token.trim()) {
@@ -66,10 +66,9 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
 
       setStep('validating');
       try {
-        const result = await validateMailbox(
-          form.tenant_id, form.client_id, form.refresh_token
-        );
-        validatedToken = result.new_refresh_token;
+        // validate-mailbox returns { success: true } only.
+        // We save form.refresh_token as-is so DB mirrors ReadSoft config exactly.
+        await validateMailbox(form.tenant_id, form.client_id, form.refresh_token);
       } catch (err) {
         setError(`Microsoft rejected the credentials: ${err.message}`);
         setStep('idle');
@@ -77,7 +76,7 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
       }
     }
 
-    // ── Save ───────────────────────────────────────────────────────────────
+    // ── Save ────────────────────────────────────────────────────────────────
     setStep('saving');
     try {
       if (isEdit) {
@@ -90,7 +89,7 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
           stale_threshold_minutes: parseInt(form.stale_threshold_minutes, 10),
         };
         if (credsChanged) {
-          updates.refresh_token      = validatedToken;
+          updates.refresh_token      = form.refresh_token;
           updates.token_generated_at = new Date().toISOString();
           updates.trigger_completed  = true;
           updates.token_expires_at   = null;
@@ -106,7 +105,7 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
           .from('mailboxes')
           .insert({
             ...form,
-            refresh_token:           validatedToken,
+            refresh_token:           form.refresh_token,
             imap_port:               parseInt(form.imap_port, 10),
             stale_threshold_minutes: parseInt(form.stale_threshold_minutes, 10),
             token_generated_at:      new Date().toISOString(),
@@ -116,7 +115,6 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
           .select().single();
         if (mbErr) throw mbErr;
 
-        // Add recipients
         const list = recipients
           .split(/[,\n]/).map(r => r.trim()).filter(r => r && r.includes('@'));
         if (list.length > 0) {
@@ -138,9 +136,9 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
   const busy = step !== 'idle';
 
   const stepLabel = {
-    checking:  'Checking license...',
-    validating:'Validating with Microsoft...',
-    saving:    'Saving...',
+    checking:   'Checking license...',
+    validating: 'Validating with Microsoft...',
+    saving:     'Saving...',
   };
 
   return (
@@ -157,13 +155,12 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Info banner */}
           <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3 flex gap-2">
             <ShieldCheck size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
             <p className="text-xs text-indigo-800 dark:text-indigo-300">
               {isEdit
-                ? 'Leave Refresh Token blank to keep the existing one. Provide a new token only if rotating credentials.'
-                : 'Credentials are validated against Microsoft Graph before saving.'}
+                ? 'Leave Refresh Token blank to keep the existing one. Provide a new token only if you have updated ReadSoft\'s config with it.'
+                : 'Token is validated with Microsoft, then stored exactly as entered. It must match what\'s in ReadSoft\'s config.'}
             </p>
           </div>
 
@@ -196,7 +193,7 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
             required={!isEdit}
             value={form.refresh_token}
             onChange={update('refresh_token')}
-            placeholder={isEdit ? 'Leave blank if not rotating' : 'OAuth refresh token'}
+            placeholder={isEdit ? 'Leave blank if not rotating' : 'Paste from Postman'}
             disabled={busy}
           />
 
@@ -228,7 +225,7 @@ export default function AddMailboxModal({ existing, onClose, onCreated }) {
           )}
 
           {error && (
-            <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg">
+            <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg whitespace-pre-wrap">
               {error}
             </div>
           )}
