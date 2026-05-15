@@ -106,11 +106,11 @@ Deno.serve(async (req) => {
       <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto;">
         <div style="background: #4f46e5; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
           <h2 style="margin: 0;">Password Reset Code</h2>
-          <p style="margin: 4px 0 0 0; opacity: 0.9;">ReadSoft Monitor</p>
+          <p style="margin: 4px 0 0 0; opacity: 0.9;">FlowSentinel</p>
         </div>
         <div style="padding: 24px; background: #f8fafc; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
           <p>Hi ${admin.full_name || 'there'},</p>
-          <p>Use the following code to reset your ReadSoft Monitor password:</p>
+          <p>Use the following code to reset your FlowSentinel password:</p>
           <div style="background: white; border: 2px solid #4f46e5; border-radius: 8px; padding: 16px; text-align: center; margin: 20px 0;">
             <div style="font-family: monospace; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #4f46e5;">
               ${otp}
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       await transporter.sendMail({
         from: `"${smtp.from_name}" <${smtp.from_email}>`,
         to: admin.email,
-        subject: 'Your ReadSoft Monitor password reset code',
+        subject: 'Your FlowSentinel password reset code',
         html,
       });
     } catch (e) {

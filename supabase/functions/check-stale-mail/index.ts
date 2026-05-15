@@ -129,7 +129,7 @@ function buildStaleEmailHtml(mb: Mailbox, stale: StaleEmail[]): string {
     <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 640px; margin: 0 auto;">
       <div style="background: #dc2626; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
         <h2 style="margin: 0;">⚠ Stale Mail Detected</h2>
-        <p style="margin: 4px 0 0 0; opacity: 0.95;">ReadSoft Monitor — ${escapeHtml(mb.email)}</p>
+        <p style="margin: 4px 0 0 0; opacity: 0.95;">FlowSentinel — ${escapeHtml(mb.email)}</p>
       </div>
       <div style="padding: 24px; background: #f8fafc; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
         <p><strong>${stale.length}</strong> email${stale.length > 1 ? 's' : ''} in this mailbox ${stale.length > 1 ? 'have' : 'has'} been waiting longer than the <strong>${mb.stale_threshold_minutes}-minute</strong> threshold.</p>
@@ -150,15 +150,15 @@ function buildConnectionFailureHtml(mb: Mailbox, errorMessage: string): string {
     <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 640px; margin: 0 auto;">
       <div style="background: #b91c1c; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
         <h2 style="margin: 0;">⚠ Mailbox Connection Failed</h2>
-        <p style="margin: 4px 0 0 0; opacity: 0.95;">ReadSoft Monitor — ${escapeHtml(mb.email)}</p>
+        <p style="margin: 4px 0 0 0; opacity: 0.95;">FlowSentinel — ${escapeHtml(mb.email)}</p>
       </div>
       <div style="padding: 24px; background: #f8fafc; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-        <p>ReadSoft Monitor was unable to connect to this mailbox during its periodic check.</p>
+        <p>FlowSentinel was unable to connect to this mailbox during its periodic check.</p>
         ${looksLikeAuth ? `
           <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 16px 0;">
             <strong>This looks like an authentication issue.</strong> The refresh token may have expired or been revoked.
             <br><br>
-            <strong>Action:</strong> Open ReadSoft Monitor, click <strong>Regenerate</strong> on this mailbox, then update both ReadSoft's backend config and this app's saved token with the new value.
+            <strong>Action:</strong> Open FlowSentinel, click <strong>Regenerate</strong> on this mailbox, then update both ReadSoft's backend config and this app's saved token with the new value.
           </div>
         ` : `
           <p style="color: #64748b; font-size: 13px;">This may be a transient network issue. The system will retry automatically every 5 minutes.</p>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Mail, Users, LogOut, Activity, RefreshCw, Send,
-  Moon, Sun, History, User, Menu, X
+  Moon, Sun, History, User, Menu,Ticket, X
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import LoginPage from './pages/LoginPage';
@@ -11,6 +11,7 @@ import MailboxesPage from './pages/MailboxesPage';
 import SmtpSettingsPage from './pages/SmtpSettingsPage';
 import AlertHistoryPage from './pages/AlertHistoryPage';
 import ProfilePage from './pages/ProfilePage';
+import SupportPage from './pages/SupportPage';
 
 export default function App() {
   return (
@@ -100,6 +101,7 @@ function ProtectedShell() {
     { path: '/smtp',    label: 'SMTP',          icon: Send     },
     { path: '/admins',  label: 'Admin Users',   icon: Users    },
     { path: '/profile', label: 'My Profile',    icon: User     },
+    { path: '/support', label: 'Support', icon: Ticket },
   ];
 
   const handleSignOut = async () => {
@@ -229,6 +231,7 @@ function ProtectedShell() {
             <Route path="/"        element={<MailboxesPage />}    />
             <Route path="/alerts"  element={<AlertHistoryPage />} />
             <Route path="/smtp"    element={<SmtpSettingsPage />} />
+            <Route path="/support" element={<SupportPage />} />
             <Route path="/admins"  element={<AdminsPage />}       />
             <Route path="/profile" element={<ProfilePage />}      />
           </Routes>

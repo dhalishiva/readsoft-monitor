@@ -49,7 +49,7 @@ function buildEmailHtml(mailbox: any, daysUntilExpiry: number) {
     <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: ${urgencyColor}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
         <h2 style="margin: 0;">⚠ Token Expiry Reminder</h2>
-        <p style="margin: 4px 0 0 0; opacity: 0.95;">ReadSoft Monitor</p>
+        <p style="margin: 4px 0 0 0; opacity: 0.95;">FlowSentinel</p>
       </div>
       <div style="padding: 24px; background: #f8fafc; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
         <p>The OAuth refresh token for the following mailbox needs to be regenerated and updated in ReadSoft's backend config:</p>
@@ -60,10 +60,10 @@ function buildEmailHtml(mailbox: any, daysUntilExpiry: number) {
         </table>
         <p style="margin-top: 24px;"><strong>Action required:</strong></p>
         <ol style="padding-left: 20px; line-height: 1.7;">
-          <li>Open ReadSoft Monitor and click <strong>Regenerate</strong> on this mailbox</li>
+          <li>Open FlowSentinel and click <strong>Regenerate</strong> on this mailbox</li>
           <li>Copy the new refresh token</li>
           <li>Paste it into ReadSoft's backend config file</li>
-          <li>Edit the mailbox in ReadSoft Monitor and paste the new token there too</li>
+          <li>Edit the mailbox in FlowSentinel and paste the new token there too</li>
         </ol>
         <p style="margin-top: 24px; font-size: 12px; color: #64748b;">
           You will keep receiving this reminder daily until the token is regenerated and the mailbox is updated.
