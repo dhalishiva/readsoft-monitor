@@ -82,32 +82,35 @@ export function AuthProvider({ children }) {
 
     // Listen for auth state changes
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
-      if (!mounted) return;
+  if (!mounted) return;
 
-      // TOKEN_REFRESHED fires when tab regains focus — don't reload the whole UI
-      // Just update the session silently
-      if (event === 'TOKEN_REFRESHED') {
-        setSession(newSession);
-        return;
-      }
+  // TOKEN_REFRESHED fires when tab regains focus — don't reload the whole UI
+  if (event === 'TOKEN_REFRESHED') {
+    setSession(newSession);
+    return;
+  }
 
-      // SIGNED_IN fires on actual login
-      // SIGNED_OUT fires on logout
-      // USER_UPDATED fires on password change
-      setSession(newSession);
+  // USER_UPDATED fires on password change — session is fine, no need to reload admin
+  if (event === 'USER_UPDATED') {
+    setSession(newSession);
+    return;
+  }
 
-      if (newSession) {
-        // Only show loading spinner on initial load, not on token refresh
-        if (!initialLoadDone.current) {
-          setLoading(true);
-        }
-        loadAdmin(supabase, newSession.user.id, !initialLoadDone.current);
-      } else {
-        setAdmin(null);
-        setLoading(false);
-        initialLoadDone.current = true;
-      }
-    });
+  // SIGNED_IN fires on actual login
+  // SIGNED_OUT fires on logout
+  setSession(newSession);
+
+  if (newSession) {
+    if (!initialLoadDone.current) {
+      setLoading(true);
+    }
+    loadAdmin(supabase, newSession.user.id, !initialLoadDone.current);
+  } else {
+    setAdmin(null);
+    setLoading(false);
+    initialLoadDone.current = true;
+  }
+});
 
     return () => {
       mounted = false;
