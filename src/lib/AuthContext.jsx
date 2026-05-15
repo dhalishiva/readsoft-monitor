@@ -120,7 +120,8 @@ export function AuthProvider({ children }) {
     if (adminLoadingRef.current) return;
     adminLoadingRef.current = true;
 
-    if (showLoading) setLoading(true);
+    // if (showLoading) setLoading(true);
+    setLoading(true);
 
     try {
       const { data, error } = await client
