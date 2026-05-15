@@ -99,10 +99,10 @@ export function AuthProvider({ children }) {
   // SIGNED_IN while already logged in — this fires when we call
   // signInWithPassword to verify current password on profile page.
   // Don't reload admin if we're already authenticated.
-  if (event === 'SIGNED_IN' && initialLoadDone.current) {
-    setSession(newSession);
-    return;
-  }
+  if (event === 'SIGNED_IN' && initialLoadDone.current && admin?.id === newSession?.user?.id) {
+  setSession(newSession);
+  return;
+}
 
   setSession(newSession);
 
