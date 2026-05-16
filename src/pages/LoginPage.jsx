@@ -199,13 +199,14 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="flex justify-center mb-4">
-          <div className="h-12 w-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
+          {/* <div className="h-12 w-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
             <Shield size={24} />
-          </div>
+          </div> */}
+          <img src="/logo_login.svg" alt="FlowSentinel" className="h-12" />
         </div>
-        <h2 className="text-2xl font-bold text-center text-slate-900 dark:text-white mb-1">
+        {/* <h2 className="text-2xl font-bold text-center text-slate-900 dark:text-white mb-1">
           FlowSentinel
-        </h2>
+        </h2> */}
 
         {/* ── Company code screen ── */}
         {screen === SCREEN.COMPANY && (

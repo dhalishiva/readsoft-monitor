@@ -35,26 +35,39 @@ export default function MailboxesPage() {
 
   useEffect(() => { load(); }, []);
 
+  // Update a single mailbox in local state without refetching
+const updateMailbox = (id, changes) => {
+  setMailboxes(prev => prev.map(mb => mb.id === id ? { ...mb, ...changes } : mb));
+};
+
   const handleDelete = async () => {
-    setDeleting(true);
-    await supabase.from('mailboxes').delete().eq('id', deleteTarget.id);
-    setDeleteTarget(null);
-    setDeleting(false);
-    load();
-  };
+  setDeleting(true);
+  await supabase.from('mailboxes').delete().eq('id', deleteTarget.id);
+  // Remove from local state — no load()
+  setMailboxes(prev => prev.filter(mb => mb.id !== deleteTarget.id));
+  setDeleteTarget(null);
+  setDeleting(false);
+};
 
   const handleMarkRegenerated = async () => {
-    setMarkingDone(true);
-    await supabase.from('mailboxes').update({
-      token_generated_at: new Date().toISOString(),
-      trigger_completed:  true,
-      token_expires_at:   null,
-      token_expiry_type:  'auto',
-    }).eq('id', markDoneTarget.id);
-    setMarkDoneTarget(null);
-    setMarkingDone(false);
-    load();
-  };
+  setMarkingDone(true);
+  const now = new Date().toISOString();
+  await supabase.from('mailboxes').update({
+    token_generated_at: now,
+    trigger_completed:  true,
+    token_expires_at:   null,
+    token_expiry_type:  'auto',
+  }).eq('id', markDoneTarget.id);
+  // Update local state — no load()
+  updateMailbox(markDoneTarget.id, {
+    token_generated_at: now,
+    trigger_completed:  true,
+    token_expires_at:   null,
+    token_expiry_type:  'auto',
+  });
+  setMarkDoneTarget(null);
+  setMarkingDone(false);
+};
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">

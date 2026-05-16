@@ -115,9 +115,10 @@ function ProtectedShell() {
     <div className="flex flex-col h-full">
       <div className="p-5 flex items-center justify-between">
         <div className="flex items-center gap-3 text-white">
-          <div className="h-8 w-8 bg-indigo-500 rounded-lg flex items-center justify-center shrink-0">
+          {/* <div className="h-8 w-8 bg-indigo-500 rounded-lg flex items-center justify-center shrink-0">
             <Mail size={18} />
-          </div>
+          </div> */}
+          <img src="/icon.svg" alt="FlowSentinel" className="h-12 w-12" />
           <span className="font-bold text-lg leading-tight">FlowSentinel</span>
         </div>
         <button onClick={closeSidebar} className="md:hidden text-slate-400 hover:text-white p-1">
@@ -214,12 +215,14 @@ function ProtectedShell() {
             <Menu size={22} />
           </button>
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="h-6 w-6 bg-indigo-600 rounded-md flex items-center justify-center shrink-0">
+            {/* <div className="h-6 w-6 bg-indigo-600 rounded-md flex items-center justify-center shrink-0">
               <Mail size={13} className="text-white" />
             </div>
+            
             <span className="font-semibold text-slate-900 dark:text-white text-sm truncate">
               FlowSentinel
-            </span>
+            </span> */}
+            <img src="/logo_login.svg" alt="FlowSentinel" className="h-10" />
           </div>
           <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">
             {navItems.find(n => n.path === location.pathname)?.label ?? ''}

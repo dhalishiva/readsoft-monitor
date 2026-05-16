@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 130">
+  <path d="M60 0 L120 22 L120 72 Q120 110 60 130 Q0 110 0 72 L0 22 Z" fill="#4F46E5"/>
+  <path d="M60 6 L112 26 L112 72 Q112 106 60 124 Q8 106 8 72 L8 26 Z" fill="#4338CA"/>
+  <polyline points="18,65 32,65 40,45 50,85 60,40 70,78 80,58 96,58 102,65"
+    fill="none" stroke="white" stroke-width="5"
+    stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
