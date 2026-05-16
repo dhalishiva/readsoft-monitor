@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const AuthContext = createContext({});
@@ -31,22 +31,31 @@ function createTenantClient(supabase_url, supabase_anon_key) {
   });
 }
 
+// Silent session update — only triggers re-render if user ID changed
+// This prevents tab-focus token refreshes from causing a re-render
+function isSameUser(prev, next) {
+  return prev?.user?.id === next?.user?.id;
+}
+
 export function AuthProvider({ children }) {
-  const [supabase, setSupabase] = useState(null);
-  const [tenant, setTenant] = useState(null);
-  const [session, setSession] = useState(null);
-  const [admin, setAdmin] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [darkMode, setDarkMode] = useState(
+  const [supabase, setSupabase]   = useState(null);
+  const [tenant, setTenant]       = useState(null);
+  const [session, setSession]     = useState(null);
+  const [admin, setAdmin]         = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [darkMode, setDarkMode]   = useState(
     () => localStorage.getItem('fs_dark') === 'true'
   );
 
-  // Track whether we've done the initial load
-  // so tab-focus auth refreshes don't cause a full reload
-  const initialLoadDone = useRef(false);
-  const adminLoadingRef = useRef(false);
+  const initialLoadDone  = useRef(false);
+  const adminLoadingRef  = useRef(false);
+  // Store admin in a ref too so the auth listener closure can read current value
+  const adminRef         = useRef(null);
 
-  // On mount: check if we have a saved tenant
+  // Keep adminRef in sync with admin state
+  useEffect(() => { adminRef.current = admin; }, [admin]);
+
+  // On mount: restore saved tenant
   useEffect(() => {
     const saved = getTenantFromStorage();
     if (saved?.supabase_url && saved?.supabase_anon_key) {
@@ -54,20 +63,20 @@ export function AuthProvider({ children }) {
       setSupabase(client);
       setTenant(saved);
     } else {
-      // No tenant saved — not logged in
       setLoading(false);
     }
   }, []);
 
-  // When supabase client is set/changed, initialise auth
+  // When supabase client changes, initialise auth listener
   useEffect(() => {
     if (!supabase) return;
 
     let mounted = true;
     initialLoadDone.current = false;
+    adminLoadingRef.current = false;
     setLoading(true);
 
-    // Get the current session first
+    // Get initial session
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       if (!mounted) return;
       setSession(s);
@@ -80,43 +89,47 @@ export function AuthProvider({ children }) {
       }
     });
 
-    // Listen for auth state changes
+    // Auth state listener
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
-  if (!mounted) return;
+      if (!mounted) return;
 
-  // TOKEN_REFRESHED — silent session update
-  if (event === 'TOKEN_REFRESHED') {
-    setSession(newSession);
-    return;
-  }
+      // ── Silent events — update session only, never reload admin ───────────
+      // TOKEN_REFRESHED: fires on tab focus when token is near expiry
+      // USER_UPDATED: fires after supabase.auth.updateUser() (password change)
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        // Only update session state if user actually changed (virtually never)
+        // This prevents the common tab-focus re-render
+        setSession(prev => isSameUser(prev, newSession) ? prev : newSession);
+        return;
+      }
 
-  // USER_UPDATED — password changed, session is fine
-  if (event === 'USER_UPDATED') {
-    setSession(newSession);
-    return;
-  }
+      // SIGNED_IN while already initialised and same user
+      // This fires when ProfilePage calls signInWithPassword to verify current password
+      if (
+        event === 'SIGNED_IN' &&
+        initialLoadDone.current &&
+        adminRef.current?.id === newSession?.user?.id
+      ) {
+        setSession(prev => isSameUser(prev, newSession) ? prev : newSession);
+        return;
+      }
 
-  // SIGNED_IN while already logged in — this fires when we call
-  // signInWithPassword to verify current password on profile page.
-  // Don't reload admin if we're already authenticated.
-  if (event === 'SIGNED_IN' && initialLoadDone.current && admin?.id === newSession?.user?.id) {
-  setSession(newSession);
-  return;
-}
+      // ── All other events (actual SIGNED_IN, SIGNED_OUT) ────────────────────
+      setSession(newSession);
 
-  setSession(newSession);
-
-  if (newSession) {
-    if (!initialLoadDone.current) {
-      setLoading(true);
-    }
-    loadAdmin(supabase, newSession.user.id, !initialLoadDone.current);
-  } else {
-    setAdmin(null);
-    setLoading(false);
-    initialLoadDone.current = true;
-  }
-});
+      if (newSession) {
+        // Only show loading spinner on first load, not on subsequent auth events
+        const shouldShowLoading = !initialLoadDone.current;
+        if (shouldShowLoading) setLoading(true);
+        loadAdmin(supabase, newSession.user.id, shouldShowLoading);
+      } else {
+        // Signed out
+        setAdmin(null);
+        adminRef.current = null;
+        setLoading(false);
+        initialLoadDone.current = true;
+      }
+    });
 
     return () => {
       mounted = false;
@@ -129,8 +142,7 @@ export function AuthProvider({ children }) {
     if (adminLoadingRef.current) return;
     adminLoadingRef.current = true;
 
-    // if (showLoading) setLoading(true);
-    setLoading(true);
+    if (showLoading) setLoading(true);
 
     try {
       const { data, error } = await client
@@ -142,17 +154,19 @@ export function AuthProvider({ children }) {
       if (error) {
         console.warn('loadAdmin error:', error.message);
         setAdmin(null);
+        adminRef.current = null;
       } else {
         setAdmin(data || null);
+        adminRef.current = data || null;
       }
     } catch (err) {
       console.warn('loadAdmin exception:', err.message);
       setAdmin(null);
+      adminRef.current = null;
     } finally {
       adminLoadingRef.current = false;
       initialLoadDone.current = true;
-      if (showLoading) setLoading(false);
-      else setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -164,11 +178,13 @@ export function AuthProvider({ children }) {
         .select('*')
         .eq('id', session.user.id)
         .single();
-      if (data) setAdmin(data);
+      if (data) {
+        setAdmin(data);
+        adminRef.current = data;
+      }
     } catch {}
   };
 
-  // Called after company code lookup
   const initialiseTenant = (tenantData) => {
     const client = createTenantClient(tenantData.supabase_url, tenantData.supabase_anon_key);
     saveTenantToStorage(tenantData);
@@ -176,7 +192,6 @@ export function AuthProvider({ children }) {
     setSupabase(client);
   };
 
-  // Called during new signup activation
   const registerTenant = (tenantData) => {
     saveTenantToStorage(tenantData);
     setTenant(tenantData);
@@ -204,6 +219,7 @@ export function AuthProvider({ children }) {
     }
     clearTenantFromStorage();
     initialLoadDone.current = false;
+    adminRef.current = null;
     setSession(null);
     setAdmin(null);
     setTenant(null);
