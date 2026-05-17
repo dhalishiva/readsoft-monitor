@@ -204,14 +204,14 @@ export function AuthProvider({ children }) {
     return supabase.auth.signInWithPassword({ email, password });
   };
 
-  const signUp = async (email, password, full_name, signup_reason) => {
-    if (!supabase) return { error: new Error('No tenant selected') };
-    return supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name, signup_reason } },
-    });
-  };
+  // const signUp = async (email, password, full_name, signup_reason) => {
+  //   if (!supabase) return { error: new Error('No tenant selected') };
+  //   return supabase.auth.signUp({
+  //     email,
+  //     password,
+  //     options: { data: { full_name, signup_reason } },
+  //   });
+  // };
 
   const signOut = async () => {
     if (supabase) {
