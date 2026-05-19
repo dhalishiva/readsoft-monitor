@@ -210,7 +210,8 @@ export default function ProfilePage() {
     : null;
   const licenseExpired = daysLeft !== null && daysLeft < 0;
   const licenseUrgent  = daysLeft !== null && daysLeft >= 0 && daysLeft <= 30;
-  const canRenew       = admin.role === 'super_admin';
+  // const canRenew       = admin.role === 'super_admin';
+  const canRenew       = true;
 
   return (
     <div className="p-6 max-w-2xl mx-auto">

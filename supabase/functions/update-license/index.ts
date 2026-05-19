@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       return json({ success: false, error: 'Admin record not found' }, 403);
     }
 
-    if (!admin.is_active || admin.approval_status !== 'approved' || admin.role !== 'super_admin') {
+    if (!admin.is_active || admin.approval_status !== 'approved') {
       return json({ success: false, error: 'Only active super admins can update the license' }, 403);
     }
 
