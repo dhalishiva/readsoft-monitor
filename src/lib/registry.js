@@ -56,6 +56,31 @@ export async function validateLicense(
   });
 }
 
+/**
+ * Renew an existing license. Calls the registry's renew-license function.
+ * Only needs the new key and the company_code — no Supabase URL or admin
+ * details needed because the tenant already exists in the registry.
+ *
+ * @param {string} licenseKey  - New license key (FS.XXXX.XXXX.XXXX)
+ * @param {string} companyCode - The tenant's existing 4-char company code
+ */
+export async function renewLicense(licenseKey, companyCode) {
+  const REGISTRY_URL = import.meta.env.VITE_REGISTRY_URL;
+
+  const res = await fetch(`${REGISTRY_URL}/functions/v1/renew-license`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      license_key:  licenseKey,
+      company_code: companyCode,
+    }),
+  });
+
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || 'Renewal failed');
+  return data; // { company_code, company_name, license_type, max_mailboxes, expires_at }
+}
+
 export async function submitTicket(
   company_code, submitted_by_email, submitted_by_name,
   subject, description, priority, category

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { lookupTenant, validateLicense } from '../lib/registry';
-import { requestPasswordReset, verifyPasswordReset } from '../lib/edgeFunctions';
+import { requestPasswordReset, verifyPasswordReset, updateLicense } from '../lib/edgeFunctions';
 
 const SCREEN = {
   COMPANY:  'company',
@@ -141,6 +141,7 @@ export default function LoginPage() {
     }
     setActivating(true);
     try {
+      // 1. Validate the license key against the registry.
       const result = await validateLicense(
         licenseKey.trim(),
         activateSbUrl.trim().replace(/\/$/, ''),
@@ -162,6 +163,7 @@ export default function LoginPage() {
         },
       };
 
+      // 2. Build a client pointed at the tenant's own Supabase.
       const { createClient } = await import('@supabase/supabase-js');
       const tenantClient = createClient(
         tenantData.supabase_url,
@@ -169,6 +171,7 @@ export default function LoginPage() {
         { auth: { persistSession: true, storageKey: `fs_auth_${tenantData.supabase_url}` } }
       );
 
+      // 3. Create the super_admin auth user.
       const { error: signUpErr } = await tenantClient.auth.signUp({
         email: activateEmail.trim(),
         password: activatePassword,
@@ -176,6 +179,7 @@ export default function LoginPage() {
       });
       if (signUpErr) throw new Error(`Account creation failed: ${signUpErr.message}`);
 
+      // 4. Sign them in so we have a JWT.
       const { data: signInData, error: signInErr } =
         await tenantClient.auth.signInWithPassword({
           email: activateEmail.trim(), password: activatePassword,
@@ -183,6 +187,23 @@ export default function LoginPage() {
       if (signInErr) throw new Error(`Sign in failed: ${signInErr.message}`);
       if (!signInData.session) throw new Error('No session returned');
 
+      // 5. Now that we have an authenticated super_admin session, write the
+      //    license expiry to license_config on the tenant's Supabase. The
+      //    cron jobs read this value to decide whether to keep monitoring.
+      //    Non-fatal: activation still succeeds if this fails — user can
+      //    renew later to retry. Logged so we can spot it in the console.
+      try {
+        await updateLicense(
+          tenantClient,
+          result.expires_at,
+          result.license_type,
+          result.max_mailboxes,
+        );
+      } catch (licErr) {
+        console.warn('Could not write license_config during activation:', licErr.message);
+      }
+
+      // 6. Persist tenant + hand off to AuthContext.
       localStorage.setItem('fs_tenant', JSON.stringify(tenantData));
       registerTenant(tenantData);
       await new Promise(r => setTimeout(r, 700));

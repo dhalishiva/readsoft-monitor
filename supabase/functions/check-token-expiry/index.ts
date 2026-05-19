@@ -101,6 +101,23 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
+  // ── License check ─────────────────────────────────────────────────────────
+const { data: licConfig } = await adminClient
+  .from('license_config')
+  .select('expires_at')
+  .eq('id', 1)
+  .maybeSingle();
+
+if (!licConfig || new Date(licConfig.expires_at) < new Date()) {
+  console.warn('License expired or not configured — monitoring paused');
+  return jsonResponse({
+    success: false,
+    error: 'License expired. Monitoring paused.',
+    summary: { checked: 0, reason: 'license_expired' },
+  });
+}
+// ─────────────────────────────────────────────────────────────────────────
+
   const summary = {
     checked: 0,
     alerted: 0,

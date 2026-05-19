@@ -199,6 +199,19 @@ export function AuthProvider({ children }) {
     setSupabase(client);
   };
 
+  // Update the license portion of the saved tenant without recreating the
+  // Supabase client (which would invalidate the current session). Used after
+  // a successful renewal so the in-app banner & Profile page reflect the new
+  // expiry immediately, with no reload.
+  const updateTenantLicense = (newLicense) => {
+    setTenant(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, license: { ...prev.license, ...newLicense } };
+      saveTenantToStorage(updated);
+      return updated;
+    });
+  };
+
   const signIn = async (email, password) => {
     if (!supabase) return { error: new Error('No tenant selected') };
     return supabase.auth.signInWithPassword({ email, password });
@@ -253,6 +266,7 @@ export function AuthProvider({ children }) {
       signOut,
       initialiseTenant,
       registerTenant,
+      updateTenantLicense,
       refreshAdmin,
     }}>
       {children}

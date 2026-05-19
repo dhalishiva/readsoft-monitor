@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Users, LogOut, Activity, RefreshCw, Send,
   Moon, Sun, History, User, Menu, Ticket, X, Clock,
+  AlertTriangle, AlertOctagon,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import LoginPage        from './pages/LoginPage';
@@ -18,6 +19,9 @@ const IDLE_TIMEOUT_MS  = 30 * 60 * 1000; // 30 minutes idle → logout
 const WARN_BEFORE_MS   =  5 * 60 * 1000; // show warning 5 min before logout
 const ACTIVITY_EVENTS  = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
 
+// ── License banner config ─────────────────────────────────────────────────────
+const LICENSE_WARN_DAYS = 30; // amber banner starts showing this many days before expiry
+
 export default function App() {
   return (
     <AuthProvider>
@@ -30,7 +34,7 @@ export default function App() {
 }
 
 function ProtectedShell() {
-  const { session, admin, loading, signOut, darkMode, toggleDarkMode } = useAuth();
+  const { session, admin, tenant, loading, signOut, darkMode, toggleDarkMode } = useAuth();
   const navigate  = useNavigate();
   const location  = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -88,6 +92,28 @@ function ProtectedShell() {
       ACTIVITY_EVENTS.forEach(e => window.removeEventListener(e, resetIdleTimer));
     };
   }, [isLoggedIn, resetIdleTimer]);
+
+  // ── License banner status ─────────────────────────────────────────────────
+  // Reads display value from tenant.license.expires_at (the *display* copy in
+  // localStorage). The enforcement copy lives in license_config on the tenant
+  // Supabase and is invisible to authenticated users. The two are written
+  // together on activation and renewal — see LoginPage.handleActivate and the
+  // renewal modal on ProfilePage.
+  const licenseStatus = useMemo(() => {
+    const expiresAt = tenant?.license?.expires_at;
+    if (!expiresAt) return { kind: 'none', days: 0 };
+
+    const expiry = new Date(expiresAt);
+    if (Number.isNaN(expiry.getTime())) return { kind: 'none', days: 0 };
+
+    const now      = new Date();
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const days     = Math.floor((expiry.getTime() - now.getTime()) / msPerDay);
+
+    if (days < 0)                  return { kind: 'expired',  days: Math.abs(days) };
+    if (days <= LICENSE_WARN_DAYS) return { kind: 'expiring', days };
+    return { kind: 'ok', days };
+  }, [tenant?.license?.expires_at]);
 
   // ── Gate 1: Loading ───────────────────────────────────────────────────────
   if (loading) {
@@ -163,6 +189,14 @@ function ProtectedShell() {
   };
 
   const closeSidebar = () => setSidebarOpen(false);
+
+  // Profile page is where the renewal modal lives. Banner CTA + sidebar avatar
+  // both route there. When the user clicks the Renew button we also pass a
+  // hash so the Profile page can auto-open the renewal modal.
+  const goRenew = () => {
+    closeSidebar();
+    navigate('/profile#renew');
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -260,6 +294,9 @@ function ProtectedShell() {
           </span>
         </header>
 
+        {/* ── License banner ── */}
+        <LicenseBanner status={licenseStatus} onRenew={goRenew} />
+
         <main className="flex-1 overflow-auto">
           <Routes>
             <Route path="/"        element={<MailboxesPage />}    />
@@ -301,6 +338,54 @@ function ProtectedShell() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── License banner component ────────────────────────────────────────────────
+// Shows a red banner when expired, amber when ≤30 days remaining, nothing
+// otherwise. No dismiss control by design — this is a kill-switch indicator.
+function LicenseBanner({ status, onRenew }) {
+  if (status.kind === 'ok' || status.kind === 'none') return null;
+
+  const expired  = status.kind === 'expired';
+  const days     = status.days;
+
+  const headline = expired
+    ? (days === 0
+        ? 'Your license expired today. Monitoring has been paused.'
+        : `Your license expired ${days} day${days === 1 ? '' : 's'} ago. Monitoring has been paused.`)
+    : (days === 0
+        ? 'Your license expires today. Renew now to avoid interruption.'
+        : `Your license expires in ${days} day${days === 1 ? '' : 's'}. Renew now to avoid interruption.`);
+
+  return (
+    <div
+      className={`shrink-0 border-b ${
+        expired
+          ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900 text-red-800 dark:text-red-200'
+          : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200'
+      }`}
+      role={expired ? 'alert' : 'status'}
+    >
+      <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {expired
+            ? <AlertOctagon size={18} className="shrink-0 text-red-600 dark:text-red-400" />
+            : <AlertTriangle size={18} className="shrink-0 text-amber-600 dark:text-amber-400" />}
+          <p className="text-sm font-medium truncate">{headline}</p>
+        </div>
+        <button
+          onClick={onRenew}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-md shrink-0 transition-colors ${
+            expired
+              ? 'bg-red-600 text-white hover:bg-red-500'
+              : 'bg-amber-600 text-white hover:bg-amber-500'
+          }`}
+        >
+          Renew license
+        </button>
+      </div>
     </div>
   );
 }

@@ -124,13 +124,13 @@ export default function SmtpSettingsPage() {
           </div>
         )}
 
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex gap-2">
+        {/* <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex gap-2">
           <Info size={14} className="text-amber-600 shrink-0 mt-0.5" />
           <p className="text-xs text-amber-800 dark:text-amber-300">
             For Gmail, use an App Password — not your regular password.
             myaccount.google.com → Security → 2-Step Verification → App passwords.
           </p>
-        </div>
+        </div> */}
 
         {savedMsg && (
           <p className={`text-sm ${savedMsg.type === 'error' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
